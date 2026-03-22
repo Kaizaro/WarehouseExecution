@@ -1,4 +1,9 @@
-﻿namespace WarehouseExecution.Infrastructure.Logging;
+﻿using Microsoft.Extensions.Configuration;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
+
+namespace WarehouseExecution.Infrastructure.Logging;
 
 public class SerilogConfigurator
 {
