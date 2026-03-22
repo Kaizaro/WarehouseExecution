@@ -1,16 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
-using Domain.Enums;
 using WarehouseExecution.Api.Jobs.Contracts;
 using WarehouseExecution.Api.Jobs.Routes;
 using WarehouseExecution.Domain.Entities;
-using WarehouseExecution.Infrastructure.Jobs;
 using WarehouseExecution.Infrastructure.Jobs.Repositories;
 
 namespace WarehouseExecution.Api.Jobs.Controllers;
 
 [ApiController]
 [Route(JobsRoutes.Base)]
-public class JobsController(IJobNumberGenerator jobNumberGenerator, IJobRepository jobRepository) : ControllerBase
+public class JobsController(IJobRepository jobRepository) : ControllerBase
 {
     [HttpGet]
     [Route(JobsRoutes.GetAll)]
@@ -33,18 +31,12 @@ public class JobsController(IJobNumberGenerator jobNumberGenerator, IJobReposito
     [Route(JobsRoutes.Post)]
     public async Task<ActionResult> Post([FromBody] CreateJobRequest request, CancellationToken cancellationToken)
     {
-        var job = new Job
-        {
-            Id = Guid.NewGuid(),
-            JobNumber = await jobNumberGenerator.NextAsync(cancellationToken),
-            Status = JobStatus.Created,
-            FromLocation = request.FromLocation,
-            ToLocation = request.ToLocation,
-            ProductCode = request.ProductCode,
-            ProductName = request.ProductName
-        };
-
-        await jobRepository.AddAsync(job, cancellationToken);
+        var job = await jobRepository.CreateAsync(
+            request.FromLocation,
+            request.ToLocation,
+            request.ProductCode,
+            request.ProductName,
+            cancellationToken);
 
         return CreatedAtAction(nameof(Get), new { id = job.Id }, job);
     }
