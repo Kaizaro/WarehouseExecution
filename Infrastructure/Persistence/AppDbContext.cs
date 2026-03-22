@@ -1,5 +1,5 @@
-using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using WarehouseExecution.Domain.Entities;
 
 namespace WarehouseExecution.Infrastructure.Persistence;
 
@@ -110,6 +110,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             }
             else if (entry.State == EntityState.Modified)
             {
+                entry.Property(x => x.CreatedAtUtc).IsModified = false;
                 entry.Entity.UpdatedAtUtc = utcNow;
             }
         }
@@ -119,6 +120,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             if (entry.State == EntityState.Added)
             {
                 entry.Entity.CreatedAtUtc = utcNow;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Property(x => x.CreatedAtUtc).IsModified = false;
             }
         }
     }

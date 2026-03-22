@@ -1,6 +1,6 @@
-﻿using Domain.Entities;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using WarehouseExecution.Api.Jobs.Routes;
+using WarehouseExecution.Domain.Entities;
 
 namespace WarehouseExecution.Api.Jobs.Controllers;
 
