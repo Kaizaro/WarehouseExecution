@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using WarehouseExecution.Infrastructure.Jobs;
+using WarehouseExecution.Infrastructure.Jobs.Repositories;
 using WarehouseExecution.Infrastructure.Persistence;
 
 namespace WarehouseExecution.Infrastructure;
@@ -19,6 +20,7 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(connectionString));
         services.AddScoped<IJobNumberGenerator, DbJobNumberGenerator>();
+        services.AddScoped<IJobRepository, JobRepository>();
 
         return services;
     }

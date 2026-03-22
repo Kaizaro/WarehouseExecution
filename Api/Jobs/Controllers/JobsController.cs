@@ -1,32 +1,30 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Domain.Enums;
 using WarehouseExecution.Api.Jobs.Contracts;
 using WarehouseExecution.Api.Jobs.Routes;
 using WarehouseExecution.Domain.Entities;
 using WarehouseExecution.Infrastructure.Jobs;
-using WarehouseExecution.Infrastructure.Persistence;
+using WarehouseExecution.Infrastructure.Jobs.Repositories;
 
 namespace WarehouseExecution.Api.Jobs.Controllers;
 
 [ApiController]
 [Route(JobsRoutes.Base)]
-public class JobsController(IJobNumberGenerator jobNumberGenerator, AppDbContext dbContext) : ControllerBase
+public class JobsController(IJobNumberGenerator jobNumberGenerator, IJobRepository jobRepository) : ControllerBase
 {
     [HttpGet]
     [Route(JobsRoutes.GetAll)]
-    public ActionResult Get()
+    public async Task<ActionResult> Get(CancellationToken cancellationToken)
     {
-        return Ok();
+        var jobs = await jobRepository.GetAllAsync(cancellationToken);
+        return Ok(jobs);
     }
 
     [HttpGet]
     [Route(JobsRoutes.GetById)]
     public async Task<ActionResult> Get(Guid id, CancellationToken cancellationToken)
     {
-        var job = await dbContext.Jobs
-            .Include(x => x.Steps)
-            .SingleOrDefaultAsync(jobEntity => jobEntity.Id == id, cancellationToken);
+        var job = await jobRepository.GetByIdAsync(id, cancellationToken);
 
         return job is null ? NotFound() : Ok(job);
     }
@@ -46,8 +44,7 @@ public class JobsController(IJobNumberGenerator jobNumberGenerator, AppDbContext
             ProductName = request.ProductName
         };
 
-        dbContext.Jobs.Add(job);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await jobRepository.AddAsync(job, cancellationToken);
 
         return CreatedAtAction(nameof(Get), new { id = job.Id }, job);
     }
