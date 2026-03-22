@@ -1,6 +1,9 @@
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using WarehouseExecution.Api.Builder;
+using WarehouseExecution.Infrastructure;
 using WarehouseExecution.Infrastructure.Logging;
+using WarehouseExecution.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,11 +13,18 @@ builder.Host.UseSerilog();
 
 // Controllers
 builder.Services.AddControllers();
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // Swagger
 builder.Services.BuildSwagger();
 
 var app = builder.Build();
+
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await dbContext.Database.MigrateAsync();
+}
 
 app.UseSerilogRequestLogging();
 

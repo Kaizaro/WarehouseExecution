@@ -7,6 +7,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<Job> Jobs => Set<Job>();
     public DbSet<JobStep> JobSteps => Set<JobStep>();
+    internal DbSet<JobNumberCounter> JobNumberCounters => Set<JobNumberCounter>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -26,6 +27,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         ConfigureJob(modelBuilder);
         ConfigureJobStep(modelBuilder);
+        ConfigureJobNumberCounter(modelBuilder);
     }
 
     private static void ConfigureJob(ModelBuilder modelBuilder)
@@ -99,6 +101,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
             entity.Property(x => x.CreatedAtUtc).IsRequired();
             entity.Property(x => x.UpdatedAtUtc).IsRequired();
+        });
+    }
+
+    private static void ConfigureJobNumberCounter(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<JobNumberCounter>(entity =>
+        {
+            entity.ToTable("JobNumberCounters");
+
+            entity.HasKey(x => x.Date);
+
+            entity.Property(x => x.Date)
+                .HasColumnType("date");
+
+            entity.Property(x => x.LastValue)
+                .IsRequired();
         });
     }
 
