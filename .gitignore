@@ -434,3 +434,5 @@ FodyWeavers.xsd
 # .NET build artifacts
 **/bin/
 **/obj/
+
+.idea/

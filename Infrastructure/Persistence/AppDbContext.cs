@@ -1,0 +1,155 @@
+using Microsoft.EntityFrameworkCore;
+using WarehouseExecution.Domain.Entities;
+
+namespace WarehouseExecution.Infrastructure.Persistence;
+
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+{
+    public DbSet<Job> Jobs => Set<Job>();
+    public DbSet<JobStep> JobSteps => Set<JobStep>();
+    internal DbSet<JobNumberCounter> JobNumberCounters => Set<JobNumberCounter>();
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        ApplyAuditDates();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        ApplyAuditDates();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        ConfigureJob(modelBuilder);
+        ConfigureJobStep(modelBuilder);
+        ConfigureJobNumberCounter(modelBuilder);
+    }
+
+    private static void ConfigureJob(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Job>(entity =>
+        {
+            entity.ToTable("Jobs");
+
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.JobNumber)
+                .IsRequired()
+                .HasMaxLength(64);
+
+            entity.HasIndex(x => x.JobNumber)
+                .IsUnique();
+
+            entity.Property(x => x.Status)
+                .HasConversion<string>()
+                .HasMaxLength(32);
+
+            entity.Property(x => x.ProductCode)
+                .HasMaxLength(128);
+
+            entity.Property(x => x.ProductName)
+                .HasMaxLength(256);
+
+            entity.Property(x => x.ToLocation)
+                .IsRequired()
+                .HasMaxLength(128);
+
+            entity.Property(x => x.FromLocation)
+                .IsRequired()
+                .HasMaxLength(128);
+
+            entity.Property(x => x.CreatedAtUtc).IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).IsRequired();
+
+            entity.HasMany(x => x.Steps)
+                .WithOne(x => x.Job)
+                .HasForeignKey(x => x.JobId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    private static void ConfigureJobStep(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<JobStep>(entity =>
+        {
+            entity.ToTable("JobSteps");
+
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.JobId).IsRequired();
+            entity.Property(x => x.StepNumber).IsRequired();
+
+            entity.HasIndex(x => new { x.JobId, x.StepNumber })
+                .IsUnique();
+
+            entity.Property(x => x.Status)
+                .HasConversion<string>()
+                .HasMaxLength(32);
+
+            entity.Property(x => x.ToLocation)
+                .IsRequired()
+                .HasMaxLength(128);
+
+            entity.Property(x => x.FromLocation)
+                .IsRequired()
+                .HasMaxLength(128);
+
+            entity.Property(x => x.CreatedAtUtc).IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).IsRequired();
+        });
+    }
+
+    private static void ConfigureJobNumberCounter(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<JobNumberCounter>(entity =>
+        {
+            entity.ToTable("JobNumberCounters");
+
+            entity.HasKey(x => x.Date);
+
+            entity.Property(x => x.Date)
+                .HasColumnType("date");
+
+            entity.Property(x => x.LastValue)
+                .IsRequired();
+        });
+    }
+
+    private void ApplyAuditDates()
+    {
+        var utcNow = DateTime.UtcNow;
+
+        foreach (var entry in ChangeTracker.Entries<Job>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.CreatedAtUtc = utcNow;
+                entry.Entity.UpdatedAtUtc = utcNow;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Property(x => x.CreatedAtUtc).IsModified = false;
+                entry.Entity.UpdatedAtUtc = utcNow;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<JobStep>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.CreatedAtUtc = utcNow;
+                entry.Entity.UpdatedAtUtc = utcNow;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Property(x => x.CreatedAtUtc).IsModified = false;
+                entry.Entity.UpdatedAtUtc = utcNow;
+            }
+        }
+    }
+}
