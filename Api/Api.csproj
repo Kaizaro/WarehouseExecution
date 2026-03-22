@@ -16,8 +16,4 @@
         <ProjectReference Include="..\Worker\Worker.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Jobs\Contracts\" />
-    </ItemGroup>
-
 </Project>

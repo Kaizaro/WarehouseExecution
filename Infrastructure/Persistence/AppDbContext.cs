@@ -48,11 +48,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasMaxLength(32);
 
             entity.Property(x => x.ProductCode)
-                .IsRequired()
                 .HasMaxLength(128);
 
             entity.Property(x => x.ProductName)
-                .IsRequired()
                 .HasMaxLength(256);
 
             entity.Property(x => x.ToLocation)
@@ -65,6 +63,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
             entity.Property(x => x.CreatedAtUtc).IsRequired();
             entity.Property(x => x.UpdatedAtUtc).IsRequired();
+
+            entity.HasMany(x => x.Steps)
+                .WithOne(x => x.Job)
+                .HasForeignKey(x => x.JobId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 
@@ -76,6 +79,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
             entity.HasKey(x => x.Id);
 
+            entity.Property(x => x.JobId).IsRequired();
             entity.Property(x => x.StepNumber).IsRequired();
 
             entity.HasIndex(x => new { x.JobId, x.StepNumber })
@@ -94,6 +98,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasMaxLength(128);
 
             entity.Property(x => x.CreatedAtUtc).IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).IsRequired();
         });
     }
 
@@ -120,10 +125,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             if (entry.State == EntityState.Added)
             {
                 entry.Entity.CreatedAtUtc = utcNow;
+                entry.Entity.UpdatedAtUtc = utcNow;
             }
             else if (entry.State == EntityState.Modified)
             {
                 entry.Property(x => x.CreatedAtUtc).IsModified = false;
+                entry.Entity.UpdatedAtUtc = utcNow;
             }
         }
     }
