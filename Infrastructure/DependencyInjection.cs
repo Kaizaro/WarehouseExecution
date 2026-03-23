@@ -1,5 +1,6 @@
 using WarehouseExecution.Application.Jobs.Abstractions;
 using WarehouseExecution.Application.Jobs.Commands;
+using WarehouseExecution.Application.Jobs.Queries;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<IJobNumberGenerator, DbJobNumberGenerator>();
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<IJobCommandService, JobCommandService>();
+        services.AddScoped<IJobQueryService, JobQueryService>();
 
         return services;
     }
