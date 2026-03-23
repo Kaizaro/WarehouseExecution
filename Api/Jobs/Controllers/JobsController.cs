@@ -1,20 +1,21 @@
 using Microsoft.AspNetCore.Mvc;
+using WarehouseExecution.Application.Jobs.Commands;
+using WarehouseExecution.Application.Jobs.Queries;
 using WarehouseExecution.Api.Jobs.Contracts;
 using WarehouseExecution.Api.Jobs.Routes;
 using WarehouseExecution.Domain.Entities;
-using WarehouseExecution.Infrastructure.Jobs.Repositories;
 
 namespace WarehouseExecution.Api.Jobs.Controllers;
 
 [ApiController]
 [Route(JobsRoutes.Base)]
-public class JobsController(IJobRepository jobRepository) : ControllerBase
+public class JobsController(IJobQueryService jobQueryService, IJobCommandService jobCommandService) : ControllerBase
 {
     [HttpGet]
     [Route(JobsRoutes.GetAll)]
     public async Task<ActionResult> Get(CancellationToken cancellationToken)
     {
-        var jobs = await jobRepository.GetAllAsync(cancellationToken);
+        var jobs = await jobQueryService.GetAllAsync(cancellationToken);
         return Ok(jobs);
     }
 
@@ -22,7 +23,7 @@ public class JobsController(IJobRepository jobRepository) : ControllerBase
     [Route(JobsRoutes.GetById)]
     public async Task<ActionResult> Get(Guid id, CancellationToken cancellationToken)
     {
-        var job = await jobRepository.GetByIdAsync(id, cancellationToken);
+        var job = await jobQueryService.GetByIdAsync(id, cancellationToken);
 
         return job is null ? NotFound() : Ok(job);
     }
@@ -31,7 +32,7 @@ public class JobsController(IJobRepository jobRepository) : ControllerBase
     [Route(JobsRoutes.Post)]
     public async Task<ActionResult> Post([FromBody] CreateJobRequest request, CancellationToken cancellationToken)
     {
-        var job = await jobRepository.CreateAsync(
+        var job = await jobCommandService.CreateAsync(
             request.FromLocation,
             request.ToLocation,
             request.ProductCode,

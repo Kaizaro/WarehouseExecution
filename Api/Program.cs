@@ -13,19 +13,23 @@ builder.Host.UseSerilog();
 
 // Controllers
 builder.Services.AddControllers();
-builder.Services.AddInfrastructure(builder.Configuration);
 
 // Swagger
 builder.Services.BuildSwagger();
 
+// Dependency Injections from other services
+builder.Services.AddInfrastructure(builder.Configuration);
+
 var app = builder.Build();
 
+// Setup DbContext
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await dbContext.Database.MigrateAsync();
 }
 
+// Turn on logging via Serilog
 app.UseSerilogRequestLogging();
 
 /* Basically should be only in dev,
@@ -37,6 +41,7 @@ app.UseSwaggerUI(options =>
     options.RoutePrefix = Swagger.SwaggerPrefix;
 });
 
+// Optionally! Redirection to https
 app.UseHttpsRedirection();
 
 app.MapControllers();

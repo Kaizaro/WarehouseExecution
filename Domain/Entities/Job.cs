@@ -1,4 +1,4 @@
-﻿using Domain.Enums;
+﻿using WarehouseExecution.Domain.Enums;
 
 namespace WarehouseExecution.Domain.Entities;
 

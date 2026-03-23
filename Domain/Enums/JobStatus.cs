@@ -1,4 +1,4 @@
-﻿namespace Domain.Enums;
+﻿namespace WarehouseExecution.Domain.Enums;
 
 public enum JobStatus
 {
@@ -6,5 +6,6 @@ public enum JobStatus
     Planned = 1,
     InProgress = 2,
     Completed = 3,
-    Failed = 4
+    Failed = 4,
+    Cancelled = 5
 }
