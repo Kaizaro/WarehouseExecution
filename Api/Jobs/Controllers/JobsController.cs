@@ -3,13 +3,17 @@ using WarehouseExecution.Application.Jobs.Commands;
 using WarehouseExecution.Application.Jobs.Queries;
 using WarehouseExecution.Api.Jobs.Contracts;
 using WarehouseExecution.Api.Jobs.Routes;
+using WarehouseExecution.Api.Jobs.Services;
 using WarehouseExecution.Domain.Entities;
 
 namespace WarehouseExecution.Api.Jobs.Controllers;
 
 [ApiController]
 [Route(JobsRoutes.Base)]
-public class JobsController(IJobQueryService jobQueryService, IJobCommandService jobCommandService) : ControllerBase
+public class JobsController(
+    IJobQueryService jobQueryService,
+    IJobCommandService jobCommandService,
+    IJobExecutionGateway jobExecutionGateway) : ControllerBase
 {
     [HttpGet]
     [Route(JobsRoutes.GetAll)]
@@ -44,15 +48,17 @@ public class JobsController(IJobQueryService jobQueryService, IJobCommandService
 
     [HttpPost]
     [Route(JobsRoutes.Execute)]
-    public ActionResult Execute([FromBody] Job job)
+    public async Task<ActionResult> Execute(Guid id, CancellationToken cancellationToken)
     {
-        return Ok();
+        var response = await jobExecutionGateway.ExecuteAsync(id, cancellationToken);
+        return Ok(response);
     }
 
     [HttpPost]
     [Route(JobsRoutes.Cancel)]
-    public ActionResult Cancel([FromBody] Job job)
+    public async Task<ActionResult> Cancel(Guid id, CancellationToken cancellationToken)
     {
-        return Ok();
+        var response = await jobExecutionGateway.CancelAsync(id, cancellationToken);
+        return Ok(response);
     }
 }

@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using WarehouseExecution.Api.Jobs.Contracts;
 using WarehouseExecution.Api.Jobs.Controllers;
+using WarehouseExecution.Api.Jobs.Services;
 using WarehouseExecution.Application.Jobs.Commands;
 using WarehouseExecution.Application.Jobs.Queries;
 using WarehouseExecution.Domain.Entities;
 using WarehouseExecution.Domain.Enums;
+using WarehouseExecution.Worker.Grpc;
 using Xunit;
 
 namespace WarehouseExecution.Tests.Jobs;
@@ -22,7 +24,8 @@ public class JobsControllerTests
 
         var controller = new JobsController(
             new FakeJobQueryService(expectedJobs),
-            new FakeJobCommandService(CreateJob("JOB-20260323-999999")));
+            new FakeJobCommandService(CreateJob("JOB-20260323-999999")),
+            new FakeJobExecutionGateway());
 
         var result = await controller.Get(CancellationToken.None);
 
@@ -38,7 +41,8 @@ public class JobsControllerTests
     {
         var controller = new JobsController(
             new FakeJobQueryService([]),
-            new FakeJobCommandService(CreateJob("JOB-20260323-999999")));
+            new FakeJobCommandService(CreateJob("JOB-20260323-999999")),
+            new FakeJobExecutionGateway());
 
         var result = await controller.Get(Guid.NewGuid(), CancellationToken.None);
 
@@ -50,7 +54,7 @@ public class JobsControllerTests
     {
         var createdJob = CreateJob("JOB-20260323-000123");
         var commandService = new FakeJobCommandService(createdJob);
-        var controller = new JobsController(new FakeJobQueryService([]), commandService);
+        var controller = new JobsController(new FakeJobQueryService([]), commandService, new FakeJobExecutionGateway());
         var request = new CreateJobRequest
         {
             FromLocation = "A-01",
@@ -136,6 +140,19 @@ public class JobsControllerTests
         }
 
         public Task<Job> CancelAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class FakeJobExecutionGateway : IJobExecutionGateway
+    {
+        public Task<ExecuteJobResponse> ExecuteAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<CancelJobResponse> CancelAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

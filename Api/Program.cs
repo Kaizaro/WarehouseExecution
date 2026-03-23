@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using WarehouseExecution.Api.Builder;
+using WarehouseExecution.Api.Jobs;
 using WarehouseExecution.Infrastructure;
 using WarehouseExecution.Infrastructure.Logging;
 using WarehouseExecution.Infrastructure.Persistence;
@@ -13,6 +14,7 @@ builder.Host.UseSerilog();
 
 // Controllers
 builder.Services.AddControllers();
+builder.Services.AddJobExecutionClient(builder.Configuration);
 
 // Swagger
 builder.Services.BuildSwagger();
