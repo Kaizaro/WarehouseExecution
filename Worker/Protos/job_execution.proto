@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option csharp_namespace = "WarehouseExecution.Worker.Grpc";
+
+package jobs;
+
+service JobExecutionService {
+  rpc ExecuteJob (ExecuteJobRequest) returns (ExecuteJobResponse);
+}
+
+message ExecuteJobRequest {
+  string job_id = 1;
+}
+
+message ExecuteJobResponse {
+  string job_id = 1;
+  string job_number = 2;
+  string status = 3;
+  string step_id = 4;
+  int32 step_number = 5;
+}

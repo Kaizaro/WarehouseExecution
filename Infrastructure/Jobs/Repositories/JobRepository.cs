@@ -46,4 +46,9 @@ public sealed class JobRepository(AppDbContext dbContext, IJobNumberGenerator jo
 
         return job;
     }
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        return dbContext.SaveChangesAsync(cancellationToken);
+    }
 }
