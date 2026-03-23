@@ -21,8 +21,11 @@ public static class DependencyInjection
                                ?? throw new InvalidOperationException(
                                    $"Connection string '{ConnectionStringName}' was not found.");
 
+        //DbContext
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(connectionString));
+        
+        // Add DI services
         services.AddScoped<IJobNumberGenerator, DbJobNumberGenerator>();
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<IJobCommandService, JobCommandService>();
