@@ -12,4 +12,7 @@ public interface IJobCommandService
         CancellationToken cancellationToken = default);
 
     Task<Job> ExecuteAsync(Guid jobId, CancellationToken cancellationToken = default);
+    Task<Job> StartExecutionAsync(Guid jobId, CancellationToken cancellationToken = default);
+    Task<Job> CompleteAsync(Guid jobId, CancellationToken cancellationToken = default);
+    Task<Job> CancelAsync(Guid jobId, CancellationToken cancellationToken = default);
 }

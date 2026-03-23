@@ -64,4 +64,82 @@ public sealed class JobCommandService(
 
         return job;
     }
+
+    public async Task<Job> StartExecutionAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        var job = await jobRepository.GetByIdAsync(jobId, cancellationToken)
+                  ?? throw new InvalidOperationException($"Job '{jobId}' was not found.");
+
+        if (job.Status != JobStatus.Planned)
+        {
+            throw new InvalidOperationException(
+                $"Job '{jobId}' cannot start execution from status '{job.Status}'.");
+        }
+
+        var step = GetSingleStep(job, jobId);
+        step.Status = JobStepStatus.InProgress;
+        job.Status = JobStatus.InProgress;
+
+        await jobRepository.SaveChangesAsync(cancellationToken);
+
+        return job;
+    }
+
+    public async Task<Job> CompleteAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        var job = await jobRepository.GetByIdAsync(jobId, cancellationToken)
+                  ?? throw new InvalidOperationException($"Job '{jobId}' was not found.");
+
+        if (job.Status != JobStatus.InProgress)
+        {
+            throw new InvalidOperationException(
+                $"Job '{jobId}' cannot be completed from status '{job.Status}'.");
+        }
+
+        var step = GetSingleStep(job, jobId);
+
+        if (step.Status != JobStepStatus.InProgress)
+        {
+            throw new InvalidOperationException(
+                $"Job '{jobId}' step cannot be completed from status '{step.Status}'.");
+        }
+
+        step.Status = JobStepStatus.Completed;
+        job.Status = JobStatus.Completed;
+
+        await jobRepository.SaveChangesAsync(cancellationToken);
+
+        return job;
+    }
+
+    public async Task<Job> CancelAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        var job = await jobRepository.GetByIdAsync(jobId, cancellationToken)
+                  ?? throw new InvalidOperationException($"Job '{jobId}' was not found.");
+
+        if (job.Status is JobStatus.Completed or JobStatus.Failed or JobStatus.Cancelled)
+        {
+            throw new InvalidOperationException(
+                $"Job '{jobId}' cannot be cancelled from status '{job.Status}'.");
+        }
+
+        var step = GetSingleStep(job, jobId);
+        step.Status = JobStepStatus.Cancelled;
+        job.Status = JobStatus.Cancelled;
+
+        await jobRepository.SaveChangesAsync(cancellationToken);
+
+        return job;
+    }
+
+    private static JobStep GetSingleStep(Job job, Guid jobId)
+    {
+        if (job.Steps.Count != 1)
+        {
+            throw new InvalidOperationException(
+                $"Job '{jobId}' must contain exactly one step in the current prototype.");
+        }
+
+        return job.Steps.Single();
+    }
 }

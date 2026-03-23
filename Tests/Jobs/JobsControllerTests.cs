@@ -124,5 +124,20 @@ public class JobsControllerTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<Job> StartExecutionAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Job> CompleteAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Job> CancelAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

@@ -6,6 +6,7 @@ package jobs;
 
 service JobExecutionService {
   rpc ExecuteJob (ExecuteJobRequest) returns (ExecuteJobResponse);
+  rpc CancelJob (CancelJobRequest) returns (CancelJobResponse);
 }
 
 message ExecuteJobRequest {
@@ -18,4 +19,13 @@ message ExecuteJobResponse {
   string status = 3;
   string step_id = 4;
   int32 step_number = 5;
+}
+
+message CancelJobRequest {
+  string job_id = 1;
+}
+
+message CancelJobResponse {
+  string job_id = 1;
+  string status = 2;
 }

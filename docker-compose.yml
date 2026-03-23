@@ -7,14 +7,14 @@ services:
       POSTGRES_USER: warehouse_exec_user
       POSTGRES_PASSWORD: warehouse_exec_pass
     ports:
-      - "5432:5432"
+      - "55432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U warehouse_exec_user -d warehouse_exec_db"]
       interval: 5s
       timeout: 5s
       retries: 10
     volumes:
-      - warehouse-exec-postgres-data:/var/lib/postgresql/data
+      - warehouse-exec-postgres-data:/var/lib/postgresql
 
   api:
     build:
