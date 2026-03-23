@@ -1,8 +1,10 @@
+using WarehouseExecution.Application.Jobs.Abstractions;
+using WarehouseExecution.Application.Jobs.Commands;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using WarehouseExecution.Infrastructure.Jobs.Execution;
 using WarehouseExecution.Infrastructure.Jobs;
+using WarehouseExecution.Infrastructure.Jobs.JobNumberGenerator;
 using WarehouseExecution.Infrastructure.Jobs.Repositories;
 using WarehouseExecution.Infrastructure.Persistence;
 
@@ -22,7 +24,7 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString));
         services.AddScoped<IJobNumberGenerator, DbJobNumberGenerator>();
         services.AddScoped<IJobRepository, JobRepository>();
-        services.AddScoped<IJobExecutionService, JobExecutionService>();
+        services.AddScoped<IJobCommandService, JobCommandService>();
 
         return services;
     }

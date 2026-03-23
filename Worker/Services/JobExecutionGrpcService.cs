@@ -1,10 +1,10 @@
 using Grpc.Core;
-using WarehouseExecution.Infrastructure.Jobs.Execution;
+using WarehouseExecution.Application.Jobs.Commands;
 using WarehouseExecution.Worker.Grpc;
 
 namespace WarehouseExecution.Worker.Services;
 
-public sealed class JobExecutionGrpcService(IJobExecutionService jobExecutionService)
+public sealed class JobExecutionGrpcService(IJobCommandService jobCommandService)
     : Grpc.JobExecutionService.JobExecutionServiceBase
 {
     public override async Task<ExecuteJobResponse> ExecuteJob(ExecuteJobRequest request, ServerCallContext context)
@@ -16,7 +16,7 @@ public sealed class JobExecutionGrpcService(IJobExecutionService jobExecutionSer
 
         try
         {
-            var job = await jobExecutionService.ExecuteAsync(jobId, context.CancellationToken);
+            var job = await jobCommandService.ExecuteAsync(jobId, context.CancellationToken);
             var step = job.Steps.Single();
 
             return new ExecuteJobResponse

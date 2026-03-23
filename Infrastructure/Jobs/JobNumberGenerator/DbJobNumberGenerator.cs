@@ -1,8 +1,9 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
+using WarehouseExecution.Application.Jobs.Abstractions;
 using WarehouseExecution.Infrastructure.Persistence;
 
-namespace WarehouseExecution.Infrastructure.Jobs;
+namespace WarehouseExecution.Infrastructure.Jobs.JobNumberGenerator;
 
 public sealed class DbJobNumberGenerator(AppDbContext dbContext) : IJobNumberGenerator
 {

@@ -1,4 +1,4 @@
-namespace WarehouseExecution.Infrastructure.Jobs;
+namespace WarehouseExecution.Application.Jobs.Abstractions;
 
 public interface IJobNumberGenerator
 {

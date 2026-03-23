@@ -1,11 +1,36 @@
 using Domain.Enums;
+using WarehouseExecution.Application.Jobs.Abstractions;
 using WarehouseExecution.Domain.Entities;
-using WarehouseExecution.Infrastructure.Jobs.Repositories;
 
-namespace WarehouseExecution.Infrastructure.Jobs.Execution;
+namespace WarehouseExecution.Application.Jobs.Commands;
 
-public sealed class JobExecutionService(IJobRepository jobRepository) : IJobExecutionService
+public sealed class JobCommandService(
+    IJobRepository jobRepository,
+    IJobNumberGenerator jobNumberGenerator) : IJobCommandService
 {
+    public async Task<Job> CreateAsync(
+        string fromLocation,
+        string toLocation,
+        string? productCode,
+        string? productName,
+        CancellationToken cancellationToken = default)
+    {
+        var job = new Job
+        {
+            Id = Guid.NewGuid(),
+            JobNumber = await jobNumberGenerator.NextAsync(cancellationToken),
+            Status = JobStatus.Created,
+            FromLocation = fromLocation,
+            ToLocation = toLocation,
+            ProductCode = productCode,
+            ProductName = productName
+        };
+
+        await jobRepository.AddAsync(job, cancellationToken);
+
+        return job;
+    }
+
     public async Task<Job> ExecuteAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
         var job = await jobRepository.GetByIdAsync(jobId, cancellationToken)

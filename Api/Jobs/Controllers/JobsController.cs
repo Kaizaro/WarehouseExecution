@@ -1,14 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
+using WarehouseExecution.Application.Jobs.Abstractions;
+using WarehouseExecution.Application.Jobs.Commands;
 using WarehouseExecution.Api.Jobs.Contracts;
 using WarehouseExecution.Api.Jobs.Routes;
 using WarehouseExecution.Domain.Entities;
-using WarehouseExecution.Infrastructure.Jobs.Repositories;
 
 namespace WarehouseExecution.Api.Jobs.Controllers;
 
 [ApiController]
 [Route(JobsRoutes.Base)]
-public class JobsController(IJobRepository jobRepository) : ControllerBase
+public class JobsController(IJobRepository jobRepository, IJobCommandService jobCommandService) : ControllerBase
 {
     [HttpGet]
     [Route(JobsRoutes.GetAll)]
@@ -31,7 +32,7 @@ public class JobsController(IJobRepository jobRepository) : ControllerBase
     [Route(JobsRoutes.Post)]
     public async Task<ActionResult> Post([FromBody] CreateJobRequest request, CancellationToken cancellationToken)
     {
-        var job = await jobRepository.CreateAsync(
+        var job = await jobCommandService.CreateAsync(
             request.FromLocation,
             request.ToLocation,
             request.ProductCode,
