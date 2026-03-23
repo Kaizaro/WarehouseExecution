@@ -1,6 +1,6 @@
-using Domain.Enums;
 using WarehouseExecution.Application.Jobs.Abstractions;
 using WarehouseExecution.Domain.Entities;
+using WarehouseExecution.Domain.Enums;
 
 namespace WarehouseExecution.Application.Jobs.Commands;
 
