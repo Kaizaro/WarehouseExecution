@@ -1,4 +1,5 @@
 using WarehouseExecution.Application.Jobs.Abstractions;
+using WarehouseExecution.Application.Common;
 using WarehouseExecution.Domain.Entities;
 using WarehouseExecution.Domain.Enums;
 
@@ -16,13 +17,21 @@ public sealed class JobCommandService(
         string? productName,
         CancellationToken cancellationToken = default)
     {
-        var sourceLocation = await locationRepository.GetByCodeAsync(fromLocation, cancellationToken)
-                             ?? throw new InvalidOperationException(
-                                 $"Source location '{fromLocation}' was not found.");
+        var normalizedFromLocation = NormalizeLocationCode(fromLocation, "Source location");
+        var normalizedToLocation = NormalizeLocationCode(toLocation, "Destination location");
 
-        var destinationLocation = await locationRepository.GetByCodeAsync(toLocation, cancellationToken)
-                                  ?? throw new InvalidOperationException(
-                                      $"Destination location '{toLocation}' was not found.");
+        if (string.Equals(normalizedFromLocation, normalizedToLocation, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ValidationException("Source and destination locations must be different.");
+        }
+
+        var sourceLocation = await locationRepository.GetByCodeAsync(normalizedFromLocation, cancellationToken)
+                             ?? throw new NotFoundException(
+                                 $"Source location '{normalizedFromLocation}' was not found.");
+
+        var destinationLocation = await locationRepository.GetByCodeAsync(normalizedToLocation, cancellationToken)
+                                  ?? throw new NotFoundException(
+                                      $"Destination location '{normalizedToLocation}' was not found.");
 
         var job = new Job
         {
@@ -43,17 +52,17 @@ public sealed class JobCommandService(
     public async Task<Job> ExecuteAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
         var job = await jobRepository.GetByIdAsync(jobId, cancellationToken)
-                  ?? throw new InvalidOperationException($"Job '{jobId}' was not found.");
+                  ?? throw new NotFoundException($"Job '{jobId}' was not found.");
 
         if (job.Status != JobStatus.Created)
         {
-            throw new InvalidOperationException(
+            throw new ConflictException(
                 $"Job '{jobId}' cannot be executed from status '{job.Status}'.");
         }
 
         if (job.Steps.Count > 0)
         {
-            throw new InvalidOperationException($"Job '{jobId}' already has planned steps.");
+            throw new ConflictException($"Job '{jobId}' already has planned steps.");
         }
 
         var step = new JobStep
@@ -77,11 +86,11 @@ public sealed class JobCommandService(
     public async Task<Job> StartExecutionAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
         var job = await jobRepository.GetByIdAsync(jobId, cancellationToken)
-                  ?? throw new InvalidOperationException($"Job '{jobId}' was not found.");
+                  ?? throw new NotFoundException($"Job '{jobId}' was not found.");
 
         if (job.Status != JobStatus.Planned)
         {
-            throw new InvalidOperationException(
+            throw new ConflictException(
                 $"Job '{jobId}' cannot start execution from status '{job.Status}'.");
         }
 
@@ -97,11 +106,11 @@ public sealed class JobCommandService(
     public async Task<Job> CompleteAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
         var job = await jobRepository.GetByIdAsync(jobId, cancellationToken)
-                  ?? throw new InvalidOperationException($"Job '{jobId}' was not found.");
+                  ?? throw new NotFoundException($"Job '{jobId}' was not found.");
 
         if (job.Status != JobStatus.InProgress)
         {
-            throw new InvalidOperationException(
+            throw new ConflictException(
                 $"Job '{jobId}' cannot be completed from status '{job.Status}'.");
         }
 
@@ -109,7 +118,7 @@ public sealed class JobCommandService(
 
         if (step.Status != JobStepStatus.InProgress)
         {
-            throw new InvalidOperationException(
+            throw new ConflictException(
                 $"Job '{jobId}' step cannot be completed from status '{step.Status}'.");
         }
 
@@ -124,11 +133,11 @@ public sealed class JobCommandService(
     public async Task<Job> CancelAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
         var job = await jobRepository.GetByIdAsync(jobId, cancellationToken)
-                  ?? throw new InvalidOperationException($"Job '{jobId}' was not found.");
+                  ?? throw new NotFoundException($"Job '{jobId}' was not found.");
 
         if (job.Status is JobStatus.Completed or JobStatus.Failed or JobStatus.Cancelled)
         {
-            throw new InvalidOperationException(
+            throw new ConflictException(
                 $"Job '{jobId}' cannot be cancelled from status '{job.Status}'.");
         }
 
@@ -145,10 +154,20 @@ public sealed class JobCommandService(
     {
         if (job.Steps.Count != 1)
         {
-            throw new InvalidOperationException(
+            throw new ConflictException(
                 $"Job '{jobId}' must contain exactly one step in the current prototype.");
         }
 
         return job.Steps.Single();
+    }
+
+    private static string NormalizeLocationCode(string locationCode, string fieldName)
+    {
+        if (string.IsNullOrWhiteSpace(locationCode))
+        {
+            throw new ValidationException($"{fieldName} is required.");
+        }
+
+        return locationCode.Trim();
     }
 }

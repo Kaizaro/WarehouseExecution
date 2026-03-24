@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Microsoft.Extensions.Options;
+using WarehouseExecution.Application.Common;
 using WarehouseExecution.Application.Jobs.Commands;
 
 namespace WarehouseExecution.Worker.Services;
@@ -66,7 +67,7 @@ public sealed class ExecutionBackgroundService(
             var cancelCommandService = cancelScope.ServiceProvider.GetRequiredService<IJobCommandService>();
             await cancelCommandService.CancelAsync(jobId, CancellationToken.None);
         }
-        catch (InvalidOperationException)
+        catch (AppException)
         {
         }
         finally

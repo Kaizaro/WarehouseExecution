@@ -1,4 +1,5 @@
 using Grpc.Core;
+using WarehouseExecution.Application.Common;
 using WarehouseExecution.Application.Jobs.Commands;
 using WarehouseExecution.Worker.Grpc;
 
@@ -31,7 +32,15 @@ public sealed class JobExecutionGrpcService(
                 StepNumber = step.StepNumber
             };
         }
-        catch (InvalidOperationException exception)
+        catch (ValidationException exception)
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, exception.Message));
+        }
+        catch (NotFoundException exception)
+        {
+            throw new RpcException(new Status(StatusCode.NotFound, exception.Message));
+        }
+        catch (ConflictException exception)
         {
             throw new RpcException(new Status(StatusCode.FailedPrecondition, exception.Message));
         }
@@ -62,7 +71,15 @@ public sealed class JobExecutionGrpcService(
                 Status = "CancellationRequested"
             };
         }
-        catch (InvalidOperationException exception)
+        catch (ValidationException exception)
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, exception.Message));
+        }
+        catch (NotFoundException exception)
+        {
+            throw new RpcException(new Status(StatusCode.NotFound, exception.Message));
+        }
+        catch (ConflictException exception)
         {
             throw new RpcException(new Status(StatusCode.FailedPrecondition, exception.Message));
         }
