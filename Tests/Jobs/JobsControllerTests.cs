@@ -13,6 +13,9 @@ namespace WarehouseExecution.Tests.Jobs;
 
 public class JobsControllerTests
 {
+    private static readonly Guid SourceLocationId = new("f0b57672-6ec3-45d6-bf6b-5f6d07ba2ac1");
+    private static readonly Guid DestinationLocationId = new("77bfa0d1-517e-48ec-8846-5646041ebf66");
+
     [Fact]
     public async Task Get_ReturnsOk_WithJobs()
     {
@@ -84,8 +87,8 @@ public class JobsControllerTests
             Id = Guid.NewGuid(),
             JobNumber = jobNumber,
             Status = JobStatus.Created,
-            FromLocation = "SRC-01",
-            ToLocation = "DST-01"
+            FromLocationId = SourceLocationId,
+            ToLocationId = DestinationLocationId
         };
     }
 

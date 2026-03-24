@@ -27,6 +27,7 @@ public static class DependencyInjection
         
         // Add DI services
         services.AddScoped<IJobNumberGenerator, DbJobNumberGenerator>();
+        services.AddScoped<ILocationRepository, LocationRepository>();
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<IJobCommandService, JobCommandService>();
         services.AddScoped<IJobQueryService, JobQueryService>();

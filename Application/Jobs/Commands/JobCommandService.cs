@@ -6,7 +6,8 @@ namespace WarehouseExecution.Application.Jobs.Commands;
 
 public sealed class JobCommandService(
     IJobRepository jobRepository,
-    IJobNumberGenerator jobNumberGenerator) : IJobCommandService
+    IJobNumberGenerator jobNumberGenerator,
+    ILocationRepository locationRepository) : IJobCommandService
 {
     public async Task<Job> CreateAsync(
         string fromLocation,
@@ -15,13 +16,21 @@ public sealed class JobCommandService(
         string? productName,
         CancellationToken cancellationToken = default)
     {
+        var sourceLocation = await locationRepository.GetByCodeAsync(fromLocation, cancellationToken)
+                             ?? throw new InvalidOperationException(
+                                 $"Source location '{fromLocation}' was not found.");
+
+        var destinationLocation = await locationRepository.GetByCodeAsync(toLocation, cancellationToken)
+                                  ?? throw new InvalidOperationException(
+                                      $"Destination location '{toLocation}' was not found.");
+
         var job = new Job
         {
             Id = Guid.NewGuid(),
             JobNumber = await jobNumberGenerator.NextAsync(cancellationToken),
             Status = JobStatus.Created,
-            FromLocation = fromLocation,
-            ToLocation = toLocation,
+            FromLocationId = sourceLocation.Id,
+            ToLocationId = destinationLocation.Id,
             ProductCode = productCode,
             ProductName = productName
         };
@@ -53,8 +62,8 @@ public sealed class JobCommandService(
             JobId = job.Id,
             StepNumber = 1,
             Status = JobStepStatus.Pending,
-            FromLocation = job.FromLocation,
-            ToLocation = job.ToLocation
+            FromLocationId = job.FromLocationId,
+            ToLocationId = job.ToLocationId
         };
 
         job.Steps.Add(step);
