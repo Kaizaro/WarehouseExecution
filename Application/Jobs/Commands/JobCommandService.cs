@@ -141,6 +141,13 @@ public sealed class JobCommandService(
                 $"Job '{jobId}' cannot be cancelled from status '{job.Status}'.");
         }
 
+        if (job.Status == JobStatus.Created)
+        {
+            job.Status = JobStatus.Cancelled;
+            await jobRepository.SaveChangesAsync(cancellationToken);
+            return job;
+        }
+
         var step = GetSingleStep(job, jobId);
         step.Status = JobStepStatus.Cancelled;
         job.Status = JobStatus.Cancelled;

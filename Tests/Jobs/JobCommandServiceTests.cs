@@ -2,6 +2,7 @@ using WarehouseExecution.Application.Common;
 using WarehouseExecution.Application.Jobs.Abstractions;
 using WarehouseExecution.Application.Jobs.Commands;
 using WarehouseExecution.Application.Jobs.Queries;
+using WarehouseExecution.Application.Locations.Queries;
 using WarehouseExecution.Domain.Entities;
 using Xunit;
 
@@ -68,6 +69,26 @@ public class JobCommandServiceTests
         Assert.Same(job, repository.AddedJob);
     }
 
+    [Fact]
+    public async Task CancelAsync_CancelsCreatedJob_WithoutRequiringStep()
+    {
+        var job = new Job
+        {
+            Id = Guid.NewGuid(),
+            JobNumber = "JOB-20260324-000010",
+            Status = WarehouseExecution.Domain.Enums.JobStatus.Created,
+            FromLocationId = Guid.NewGuid(),
+            ToLocationId = Guid.NewGuid()
+        };
+        var repository = new FakeJobRepository { JobForUpdate = job };
+        var service = CreateService(repository);
+
+        var cancelledJob = await service.CancelAsync(job.Id, CancellationToken.None);
+
+        Assert.Equal(WarehouseExecution.Domain.Enums.JobStatus.Cancelled, cancelledJob.Status);
+        Assert.True(repository.SaveChangesCalled);
+    }
+
     private static JobCommandService CreateService(
         FakeJobRepository? repository = null,
         params Location[] locations)
@@ -91,6 +112,8 @@ public class JobCommandServiceTests
     private sealed class FakeJobRepository : IJobRepository
     {
         public Job? AddedJob { get; private set; }
+        public Job? JobForUpdate { get; init; }
+        public bool SaveChangesCalled { get; private set; }
 
         public Task<IReadOnlyList<JobView>> GetAllAsync(CancellationToken cancellationToken = default)
         {
@@ -104,7 +127,7 @@ public class JobCommandServiceTests
 
         public Task<Job?> GetForUpdateAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException();
+            return Task.FromResult(JobForUpdate);
         }
 
         public Task AddAsync(Job job, CancellationToken cancellationToken = default)
@@ -115,6 +138,7 @@ public class JobCommandServiceTests
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {
+            SaveChangesCalled = true;
             return Task.CompletedTask;
         }
     }
@@ -132,6 +156,22 @@ public class JobCommandServiceTests
         public Task<Location?> GetByCodeAsync(string code, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(locations.SingleOrDefault(location => location.Code == code));
+        }
+
+        public Task<IReadOnlyList<LocationView>> GetAllAsync(CancellationToken cancellationToken = default)
+        {
+            var result = locations
+                .Select(location => new LocationView
+                {
+                    Id = location.Id,
+                    Code = location.Code,
+                    Name = location.Name,
+                    CreatedAtUtc = location.CreatedAtUtc,
+                    UpdatedAtUtc = location.UpdatedAtUtc
+                })
+                .ToList();
+
+            return Task.FromResult((IReadOnlyList<LocationView>)result);
         }
     }
 }

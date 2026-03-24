@@ -8,6 +8,7 @@ using WarehouseExecution.Infrastructure.Jobs;
 using WarehouseExecution.Infrastructure.Jobs.JobNumberGenerator;
 using WarehouseExecution.Infrastructure.Jobs.Repositories;
 using WarehouseExecution.Infrastructure.Persistence;
+using WarehouseExecution.Application.Locations.Queries;
 
 namespace WarehouseExecution.Infrastructure;
 
@@ -31,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<IJobCommandService, JobCommandService>();
         services.AddScoped<IJobQueryService, JobQueryService>();
+        services.AddScoped<ILocationQueryService, LocationQueryService>();
 
         return services;
     }
