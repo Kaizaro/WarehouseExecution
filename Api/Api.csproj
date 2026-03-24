@@ -5,6 +5,11 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Google.Protobuf" />
+        <PackageReference Include="Grpc.Net.ClientFactory" />
+        <PackageReference Include="Grpc.Tools" PrivateAssets="all">
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
           <PrivateAssets>all</PrivateAssets>
@@ -18,6 +23,10 @@
         <ProjectReference Include="..\Application\Application.csproj" />
         <ProjectReference Include="..\Domain\Domain.csproj" />
         <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Protobuf Include="..\Worker\Protos\job_execution.proto" GrpcServices="Client" Link="Protos\job_execution.proto" />
     </ItemGroup>
 
 </Project>

@@ -122,4 +122,19 @@ public sealed class ApiErrorResponse
                 }
             ]
         };
+
+    public static ApiErrorResponse Conflict(string detail) =>
+        new()
+        {
+            Errors =
+            [
+                new ApiError
+                {
+                    Status = "409",
+                    Code = "CONFLICT",
+                    Title = "Conflict",
+                    Detail = detail
+                }
+            ]
+        };
 }

@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using WarehouseExecution.Api.Builder;
+using WarehouseExecution.Api.Common;
+using WarehouseExecution.Api.Jobs;
 using WarehouseExecution.Infrastructure;
 using WarehouseExecution.Infrastructure.Logging;
 using WarehouseExecution.Infrastructure.Persistence;
@@ -13,6 +15,7 @@ builder.Host.UseSerilog();
 
 // Controllers
 builder.Services.AddControllers();
+builder.Services.AddJobExecutionClient(builder.Configuration);
 
 // Swagger
 builder.Services.BuildSwagger();
@@ -22,7 +25,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-// Setup DbContext
+// Demo-only tradeoff: apply pending migrations on API startup.
+// In production this should be handled by a dedicated migration step/job.
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -31,6 +35,7 @@ await using (var scope = app.Services.CreateAsyncScope())
 
 // Turn on logging via Serilog
 app.UseSerilogRequestLogging();
+app.UseMiddleware<ApplicationExceptionMiddleware>();
 
 /* Basically should be only in dev,
  but for demo reasons it's ok to show */

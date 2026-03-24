@@ -24,6 +24,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__WarehouseExecutionDb: Host=postgres;Port=5432;Database=warehouse_exec_db;Username=warehouse_exec_user;Password=warehouse_exec_pass
+      Grpc__WorkerUrl: http://worker:8081
     depends_on:
       postgres:
         condition: service_healthy

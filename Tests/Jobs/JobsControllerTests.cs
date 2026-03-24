@@ -1,36 +1,44 @@
 using Microsoft.AspNetCore.Mvc;
 using WarehouseExecution.Api.Jobs.Contracts;
 using WarehouseExecution.Api.Jobs.Controllers;
+using WarehouseExecution.Api.Jobs.Services;
 using WarehouseExecution.Application.Jobs.Commands;
 using WarehouseExecution.Application.Jobs.Queries;
 using WarehouseExecution.Domain.Entities;
 using WarehouseExecution.Domain.Enums;
+using WarehouseExecution.Worker.Grpc;
 using Xunit;
 
 namespace WarehouseExecution.Tests.Jobs;
 
 public class JobsControllerTests
 {
+    private static readonly Guid SourceLocationId = new("f0b57672-6ec3-45d6-bf6b-5f6d07ba2ac1");
+    private static readonly Guid DestinationLocationId = new("77bfa0d1-517e-48ec-8846-5646041ebf66");
+
     [Fact]
     public async Task Get_ReturnsOk_WithJobs()
     {
-        var expectedJobs = new List<Job>
+        var expectedJobs = new List<JobView>
         {
-            CreateJob("JOB-20260323-000001"),
-            CreateJob("JOB-20260323-000002")
+            CreateJobView("JOB-20260323-000001"),
+            CreateJobView("JOB-20260323-000002")
         };
 
         var controller = new JobsController(
             new FakeJobQueryService(expectedJobs),
-            new FakeJobCommandService(CreateJob("JOB-20260323-999999")));
+            new FakeJobCommandService(CreateJob("JOB-20260323-999999")),
+            new FakeJobExecutionGateway());
 
         var result = await controller.Get(CancellationToken.None);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var jobs = Assert.IsAssignableFrom<IReadOnlyList<Job>>(okResult.Value);
+        var jobs = Assert.IsAssignableFrom<IReadOnlyList<JobResponse>>(okResult.Value);
         Assert.Equal(2, jobs.Count);
         Assert.Equal(expectedJobs[0].Id, jobs[0].Id);
         Assert.Equal(expectedJobs[1].Id, jobs[1].Id);
+        Assert.Equal(expectedJobs[0].FromLocationCode, jobs[0].FromLocation);
+        Assert.Equal(expectedJobs[0].ToLocationCode, jobs[0].ToLocation);
     }
 
     [Fact]
@@ -38,7 +46,8 @@ public class JobsControllerTests
     {
         var controller = new JobsController(
             new FakeJobQueryService([]),
-            new FakeJobCommandService(CreateJob("JOB-20260323-999999")));
+            new FakeJobCommandService(CreateJob("JOB-20260323-999999")),
+            new FakeJobExecutionGateway());
 
         var result = await controller.Get(Guid.NewGuid(), CancellationToken.None);
 
@@ -49,8 +58,12 @@ public class JobsControllerTests
     public async Task Post_ReturnsCreatedAtAction_WithCreatedJob()
     {
         var createdJob = CreateJob("JOB-20260323-000123");
+        var createdJobView = CreateJobView(createdJob.Id, createdJob.JobNumber, "A-01", "B-02");
         var commandService = new FakeJobCommandService(createdJob);
-        var controller = new JobsController(new FakeJobQueryService([]), commandService);
+        var controller = new JobsController(
+            new FakeJobQueryService([createdJobView]),
+            commandService,
+            new FakeJobExecutionGateway());
         var request = new CreateJobRequest
         {
             FromLocation = "A-01",
@@ -65,8 +78,10 @@ public class JobsControllerTests
         Assert.Equal(nameof(JobsController.Get), createdAtResult.ActionName);
         Assert.Equal(createdJob.Id, createdAtResult.RouteValues!["id"]);
 
-        var responseJob = Assert.IsType<Job>(createdAtResult.Value);
+        var responseJob = Assert.IsType<JobResponse>(createdAtResult.Value);
         Assert.Equal(createdJob.Id, responseJob.Id);
+        Assert.Equal("A-01", responseJob.FromLocation);
+        Assert.Equal("B-02", responseJob.ToLocation);
         Assert.Equal(request.FromLocation, commandService.LastFromLocation);
         Assert.Equal(request.ToLocation, commandService.LastToLocation);
         Assert.Equal(request.ProductCode, commandService.LastProductCode);
@@ -80,19 +95,37 @@ public class JobsControllerTests
             Id = Guid.NewGuid(),
             JobNumber = jobNumber,
             Status = JobStatus.Created,
-            FromLocation = "SRC-01",
-            ToLocation = "DST-01"
+            FromLocationId = SourceLocationId,
+            ToLocationId = DestinationLocationId
         };
     }
 
-    private sealed class FakeJobQueryService(IReadOnlyList<Job> jobs) : IJobQueryService
+    private static JobView CreateJobView(string jobNumber)
     {
-        public Task<IReadOnlyList<Job>> GetAllAsync(CancellationToken cancellationToken = default)
+        return CreateJobView(Guid.NewGuid(), jobNumber, "A-01", "B-02");
+    }
+
+    private static JobView CreateJobView(Guid id, string jobNumber, string fromLocation, string toLocation)
+    {
+        return new JobView
+        {
+            Id = id,
+            JobNumber = jobNumber,
+            Status = JobStatus.Created.ToString(),
+            FromLocationCode = fromLocation,
+            ToLocationCode = toLocation,
+            Steps = []
+        };
+    }
+
+    private sealed class FakeJobQueryService(IReadOnlyList<JobView> jobs) : IJobQueryService
+    {
+        public Task<IReadOnlyList<JobView>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return Task.FromResult(jobs);
         }
 
-        public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<JobView?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(jobs.SingleOrDefault(job => job.Id == id));
         }
@@ -136,6 +169,19 @@ public class JobsControllerTests
         }
 
         public Task<Job> CancelAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class FakeJobExecutionGateway : IJobExecutionGateway
+    {
+        public Task<ExecuteJobResponse> ExecuteAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<CancelJobResponse> CancelAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

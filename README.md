@@ -14,7 +14,7 @@ The solution demonstrates:
 ### Projects
 
 - `Domain`
-  Contains entities and enums such as `Job`, `JobStep`, `JobStatus`, and `JobStepStatus`.
+  Contains entities and enums such as `Job`, `JobStep`, `Location`, `JobStatus`, and `JobStepStatus`.
 
 - `Application`
   Contains use cases and service contracts.
@@ -36,12 +36,16 @@ The solution demonstrates:
 Current prototype flow:
 
 1. A job is created through REST.
-2. The initial `Job` status is `Created`.
-3. `ExecuteJob` is called through gRPC.
-4. The worker creates one `JobStep` and moves the job to `Planned`.
-5. Background execution starts and moves both `Job` and `JobStep` to `InProgress`.
-6. After a random delay between 60 and 120 seconds, the job finishes as `Completed`.
-7. If `CancelJob` is sent during that execution window, both `Job` and `JobStep` become `Cancelled`.
+2. The API resolves `fromLocation` and `toLocation` codes against the `Locations` reference table.
+3. The initial `Job` status is `Created`.
+4. `ExecuteJob` is called through gRPC.
+5. The worker creates one `JobStep` and moves the job to `Planned`.
+6. Background execution starts and moves both `Job` and `JobStep` to `InProgress`.
+7. After a random delay between 60 and 120 seconds, the job finishes as `Completed`.
+8. If `CancelJob` is sent during that execution window, both `Job` and `JobStep` become `Cancelled`.
+
+Additional prototype rule:
+- a `Created` job can be cancelled directly before any step is planned
 
 Current prototype restriction:
 - one `Job` has exactly one `JobStep`
@@ -69,6 +73,7 @@ http://localhost:8080
 
 ### Endpoints
 
+- `GET /locations`
 - `GET /jobs`
 - `GET /jobs/{id}`
 - `POST /jobs`
@@ -86,6 +91,8 @@ Content-Type: application/json
   "productName": "Box"
 }
 ```
+
+`fromLocation` and `toLocation` must reference existing location codes from the `Locations` table.
 
 ## gRPC Worker
 
@@ -119,6 +126,10 @@ service JobExecutionService {
 
 PostgreSQL is used as the system database.
 
+Reference data:
+- `Locations`
+  Stores warehouse location master data with `Id`, `Code`, `Name`, `CreatedAtUtc`, and `UpdatedAtUtc`
+
 Host ports:
 - API: `8080`
 - Worker: `8081`
@@ -135,6 +146,9 @@ From the host machine, PostgreSQL is available on:
 ```text
 localhost:55432
 ```
+
+For demo simplicity, the `Api` host applies pending EF Core migrations on startup.
+In a production setup, schema migrations should be executed by a dedicated deployment step or migration job.
 
 ## Run with Docker
 
@@ -184,11 +198,14 @@ dotnet run --project Worker
 
 ## Tests
 
-The solution currently includes controller-level unit tests for:
+The solution currently includes unit tests for:
 
+- `GET /locations`
 - `GET /jobs`
 - `GET /jobs/{id}`
 - `POST /jobs`
+- application-level validation for job creation
+- application-level cancellation of `Created` jobs
 
 Test project:
 
