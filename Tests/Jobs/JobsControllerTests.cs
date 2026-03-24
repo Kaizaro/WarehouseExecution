@@ -19,10 +19,10 @@ public class JobsControllerTests
     [Fact]
     public async Task Get_ReturnsOk_WithJobs()
     {
-        var expectedJobs = new List<Job>
+        var expectedJobs = new List<JobView>
         {
-            CreateJob("JOB-20260323-000001"),
-            CreateJob("JOB-20260323-000002")
+            CreateJobView("JOB-20260323-000001"),
+            CreateJobView("JOB-20260323-000002")
         };
 
         var controller = new JobsController(
@@ -33,10 +33,12 @@ public class JobsControllerTests
         var result = await controller.Get(CancellationToken.None);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var jobs = Assert.IsAssignableFrom<IReadOnlyList<Job>>(okResult.Value);
+        var jobs = Assert.IsAssignableFrom<IReadOnlyList<JobResponse>>(okResult.Value);
         Assert.Equal(2, jobs.Count);
         Assert.Equal(expectedJobs[0].Id, jobs[0].Id);
         Assert.Equal(expectedJobs[1].Id, jobs[1].Id);
+        Assert.Equal(expectedJobs[0].FromLocationCode, jobs[0].FromLocation);
+        Assert.Equal(expectedJobs[0].ToLocationCode, jobs[0].ToLocation);
     }
 
     [Fact]
@@ -56,8 +58,12 @@ public class JobsControllerTests
     public async Task Post_ReturnsCreatedAtAction_WithCreatedJob()
     {
         var createdJob = CreateJob("JOB-20260323-000123");
+        var createdJobView = CreateJobView(createdJob.Id, createdJob.JobNumber, "A-01", "B-02");
         var commandService = new FakeJobCommandService(createdJob);
-        var controller = new JobsController(new FakeJobQueryService([]), commandService, new FakeJobExecutionGateway());
+        var controller = new JobsController(
+            new FakeJobQueryService([createdJobView]),
+            commandService,
+            new FakeJobExecutionGateway());
         var request = new CreateJobRequest
         {
             FromLocation = "A-01",
@@ -72,8 +78,10 @@ public class JobsControllerTests
         Assert.Equal(nameof(JobsController.Get), createdAtResult.ActionName);
         Assert.Equal(createdJob.Id, createdAtResult.RouteValues!["id"]);
 
-        var responseJob = Assert.IsType<Job>(createdAtResult.Value);
+        var responseJob = Assert.IsType<JobResponse>(createdAtResult.Value);
         Assert.Equal(createdJob.Id, responseJob.Id);
+        Assert.Equal("A-01", responseJob.FromLocation);
+        Assert.Equal("B-02", responseJob.ToLocation);
         Assert.Equal(request.FromLocation, commandService.LastFromLocation);
         Assert.Equal(request.ToLocation, commandService.LastToLocation);
         Assert.Equal(request.ProductCode, commandService.LastProductCode);
@@ -92,14 +100,32 @@ public class JobsControllerTests
         };
     }
 
-    private sealed class FakeJobQueryService(IReadOnlyList<Job> jobs) : IJobQueryService
+    private static JobView CreateJobView(string jobNumber)
     {
-        public Task<IReadOnlyList<Job>> GetAllAsync(CancellationToken cancellationToken = default)
+        return CreateJobView(Guid.NewGuid(), jobNumber, "A-01", "B-02");
+    }
+
+    private static JobView CreateJobView(Guid id, string jobNumber, string fromLocation, string toLocation)
+    {
+        return new JobView
+        {
+            Id = id,
+            JobNumber = jobNumber,
+            Status = JobStatus.Created.ToString(),
+            FromLocationCode = fromLocation,
+            ToLocationCode = toLocation,
+            Steps = []
+        };
+    }
+
+    private sealed class FakeJobQueryService(IReadOnlyList<JobView> jobs) : IJobQueryService
+    {
+        public Task<IReadOnlyList<JobView>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return Task.FromResult(jobs);
         }
 
-        public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<JobView?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(jobs.SingleOrDefault(job => job.Id == id));
         }

@@ -1,6 +1,7 @@
 using WarehouseExecution.Application.Common;
 using WarehouseExecution.Application.Jobs.Abstractions;
 using WarehouseExecution.Application.Jobs.Commands;
+using WarehouseExecution.Application.Jobs.Queries;
 using WarehouseExecution.Domain.Entities;
 using Xunit;
 
@@ -91,12 +92,17 @@ public class JobCommandServiceTests
     {
         public Job? AddedJob { get; private set; }
 
-        public Task<IReadOnlyList<Job>> GetAllAsync(CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<JobView>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<JobView?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Job?> GetForUpdateAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

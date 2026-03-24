@@ -4,7 +4,6 @@ using WarehouseExecution.Application.Jobs.Queries;
 using WarehouseExecution.Api.Jobs.Contracts;
 using WarehouseExecution.Api.Jobs.Routes;
 using WarehouseExecution.Api.Jobs.Services;
-using WarehouseExecution.Domain.Entities;
 
 namespace WarehouseExecution.Api.Jobs.Controllers;
 
@@ -20,7 +19,7 @@ public class JobsController(
     public async Task<ActionResult> Get(CancellationToken cancellationToken)
     {
         var jobs = await jobQueryService.GetAllAsync(cancellationToken);
-        return Ok(jobs);
+        return Ok(jobs.Select(job => job.ToResponse()).ToList());
     }
 
     [HttpGet]
@@ -29,7 +28,7 @@ public class JobsController(
     {
         var job = await jobQueryService.GetByIdAsync(id, cancellationToken);
 
-        return job is null ? NotFound() : Ok(job);
+        return job is null ? NotFound() : Ok(job.ToResponse());
     }
 
     [HttpPost]
@@ -43,7 +42,12 @@ public class JobsController(
             request.ProductName,
             cancellationToken);
 
-        return CreatedAtAction(nameof(Get), new { id = job.Id }, job);
+        var createdJob = await jobQueryService.GetByIdAsync(job.Id, cancellationToken);
+
+        return CreatedAtAction(
+            nameof(Get),
+            new { id = job.Id },
+            createdJob?.ToResponse());
     }
 
     [HttpPost]

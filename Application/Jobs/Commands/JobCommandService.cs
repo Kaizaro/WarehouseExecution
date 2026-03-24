@@ -51,7 +51,7 @@ public sealed class JobCommandService(
 
     public async Task<Job> ExecuteAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
-        var job = await jobRepository.GetByIdAsync(jobId, cancellationToken)
+        var job = await jobRepository.GetForUpdateAsync(jobId, cancellationToken)
                   ?? throw new NotFoundException($"Job '{jobId}' was not found.");
 
         if (job.Status != JobStatus.Created)
@@ -85,7 +85,7 @@ public sealed class JobCommandService(
 
     public async Task<Job> StartExecutionAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
-        var job = await jobRepository.GetByIdAsync(jobId, cancellationToken)
+        var job = await jobRepository.GetForUpdateAsync(jobId, cancellationToken)
                   ?? throw new NotFoundException($"Job '{jobId}' was not found.");
 
         if (job.Status != JobStatus.Planned)
@@ -105,7 +105,7 @@ public sealed class JobCommandService(
 
     public async Task<Job> CompleteAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
-        var job = await jobRepository.GetByIdAsync(jobId, cancellationToken)
+        var job = await jobRepository.GetForUpdateAsync(jobId, cancellationToken)
                   ?? throw new NotFoundException($"Job '{jobId}' was not found.");
 
         if (job.Status != JobStatus.InProgress)
@@ -132,7 +132,7 @@ public sealed class JobCommandService(
 
     public async Task<Job> CancelAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
-        var job = await jobRepository.GetByIdAsync(jobId, cancellationToken)
+        var job = await jobRepository.GetForUpdateAsync(jobId, cancellationToken)
                   ?? throw new NotFoundException($"Job '{jobId}' was not found.");
 
         if (job.Status is JobStatus.Completed or JobStatus.Failed or JobStatus.Cancelled)

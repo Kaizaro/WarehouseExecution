@@ -1,9 +1,7 @@
-using WarehouseExecution.Domain.Entities;
-
 namespace WarehouseExecution.Application.Jobs.Queries;
 
 public interface IJobQueryService
 {
-    Task<IReadOnlyList<Job>> GetAllAsync(CancellationToken cancellationToken = default);
-    Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<JobView>> GetAllAsync(CancellationToken cancellationToken = default);
+    Task<JobView?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 }
