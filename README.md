@@ -1,67 +1,172 @@
 # WarehouseExecution
 
-WarehouseExecution is a small warehouse execution system prototype built with .NET 10.
+`WarehouseExecution` is a small warehouse execution prototype built with `.NET 10`, `PostgreSQL`, REST, and gRPC.
 
-The solution demonstrates:
-- a layered architecture (`Domain`, `Application`, `Infrastructure`)
-- a public REST API host (`Api`)
-- an internal gRPC worker host (`Worker`)
-- PostgreSQL persistence via EF Core
-- Docker-based local startup
+The goal of the project is not to model a full WMS, but to demonstrate a coherent backend slice:
+- reference data integrity for warehouse locations
+- explicit job lifecycle transitions
+- separation between public API, application logic, persistence, and worker execution
+- pragmatic prototype trade-offs documented in code and README
 
-## Architecture
+## What The Prototype Does
 
-### Projects
+The system models a warehouse job that moves product from one location to another.
 
-- `Domain`
-  Contains entities and enums such as `Job`, `JobStep`, `Location`, `JobStatus`, and `JobStepStatus`.
-
-- `Application`
-  Contains use cases and service contracts.
-  `IJobCommandService` handles state-changing operations.
-  `IJobQueryService` handles read operations.
-
-- `Infrastructure`
-  Contains EF Core `AppDbContext`, migrations, repositories, and the database-backed `JobNumber` generator.
-
-- `Api`
-  Public REST API for creating and reading jobs.
-
-- `Worker`
-  Internal gRPC service for job execution and cancellation.
-  It also contains the in-memory execution scheduler prototype.
-
-## Domain Flow
-
-Current prototype flow:
-
-1. A job is created through REST.
-2. The API resolves `fromLocation` and `toLocation` codes against the `Locations` reference table.
-3. The initial `Job` status is `Created`.
-4. `ExecuteJob` is called through gRPC.
-5. The worker creates one `JobStep` and moves the job to `Planned`.
-6. Background execution starts and moves both `Job` and `JobStep` to `InProgress`.
-7. After a random delay between 60 and 120 seconds, the job finishes as `Completed`.
-8. If `CancelJob` is sent during that execution window, both `Job` and `JobStep` become `Cancelled`.
-
-Additional prototype rule:
-- a `Created` job can be cancelled directly before any step is planned
+Current flow:
+1. A client creates a job through REST using `fromLocation` and `toLocation` codes.
+2. The API resolves those codes against the `Locations` reference table.
+3. The job is stored in PostgreSQL with `FromLocationId` and `ToLocationId` foreign keys.
+4. A gRPC worker can execute the job.
+5. Execution creates exactly one `JobStep` in the current prototype.
+6. The worker moves the job through `Created -> Planned -> InProgress -> Completed`.
+7. A `Created` job can be cancelled directly.
+8. An `InProgress` job can be cancelled through the worker flow.
 
 Current prototype restriction:
 - one `Job` has exactly one `JobStep`
 
-## Job Identifiers
+## Architecture
 
-The system uses two identifiers:
+The solution is split into five projects.
 
+- `Domain`
+  Core entities and enums: `Job`, `JobStep`, `Location`, `JobStatus`, `JobStepStatus`.
+
+- `Application`
+  Use cases, query models, and application-level validation/errors.
+
+- `Infrastructure`
+  EF Core persistence, migrations, repositories, and the database-backed `JobNumber` generator.
+
+- `Api`
+  Public REST API for reading locations and creating/reading jobs.
+
+- `Worker`
+  Internal gRPC service responsible for job execution and cancellation scheduling.
+
+## Key Decisions
+
+### 1. Locations Are Reference Data, Not Free Strings
+
+The project originally used string fields for `fromLocation` and `toLocation`.
+
+That was replaced with:
+- `Locations` reference table
+- `unique(code)`
+- `Job.FromLocationId` / `Job.ToLocationId`
+- `JobStep.FromLocationId` / `JobStep.ToLocationId`
+
+The public API still accepts location codes, but the database stores foreign keys.
+
+Why:
+- prevents invalid location values from being persisted
+- keeps API ergonomic while enforcing referential integrity
+- makes domain rules around routing stricter and easier to evolve
+
+### 2. API Contracts Are Separate From Domain Entities
+
+The API does not return EF/domain entities directly.
+
+Read endpoints return dedicated DTOs with location codes rather than raw foreign keys.
+
+Why:
+- avoids leaking persistence concerns into the HTTP contract
+- keeps the external model stable if the internal model changes
+- makes the API easier to read and test
+
+### 3. Errors Are Explicit
+
+Application logic uses explicit exception types:
+- `ValidationException`
+- `NotFoundException`
+- `ConflictException`
+
+The API maps them to:
+- `400`
+- `404`
+- `409`
+
+Why:
+- makes business failures predictable
+- removes generic `500` behavior for expected scenarios
+- gives cleaner boundaries between application logic and transport
+
+### 4. Execution Is Intentionally Prototype-Grade
+
+The worker uses an in-memory scheduler for delayed execution completion.
+
+Why:
+- it keeps the prototype focused on lifecycle orchestration
+- it avoids adding a queue or durable scheduler before the domain slice is stable
+
+Trade-off:
+- scheduled waiting is not durable across worker restarts
+
+In production, this would move to a queue, broker, or durable scheduling mechanism.
+
+### 5. Migrations Run Automatically In The API
+
+For demo convenience, the `Api` host applies pending EF Core migrations on startup.
+
+Why:
+- simplest local setup
+- one command to get the system running
+
+Trade-off:
+- not the best production deployment pattern
+
+In production, schema migration should be handled by a dedicated deployment step or migration job.
+
+## Data Model
+
+### Locations
+
+Reference table:
 - `Id`
-  Technical identifier stored as `Guid`
+- `Code`
+- `Name`
+- `CreatedAtUtc`
+- `UpdatedAtUtc`
 
+Seeded locations:
+- `A-01`
+- `A-02`
+- `B-01`
+- `B-02`
+- `P-01`
+
+### Jobs
+
+Main fields:
+- `Id`
 - `JobNumber`
-  Business-readable identifier generated by the application in the format:
-  `JOB-yyyyMMdd-000001`
+- `Status`
+- `ProductCode`
+- `ProductName`
+- `FromLocationId`
+- `ToLocationId`
+- `CreatedAtUtc`
+- `UpdatedAtUtc`
 
-`JobNumber` is generated using a PostgreSQL-backed counter table.
+`JobNumber` is a business identifier in the format:
+
+```text
+JOB-yyyyMMdd-000001
+```
+
+It is generated using a PostgreSQL-backed counter table.
+
+### JobSteps
+
+Main fields:
+- `Id`
+- `JobId`
+- `StepNumber`
+- `Status`
+- `FromLocationId`
+- `ToLocationId`
+- `CreatedAtUtc`
+- `UpdatedAtUtc`
 
 ## REST API
 
@@ -71,14 +176,13 @@ Base URL:
 http://localhost:8080
 ```
 
-### Endpoints
-
+Endpoints:
 - `GET /locations`
 - `GET /jobs`
 - `GET /jobs/{id}`
 - `POST /jobs`
 
-### Create Job Example
+Create job example:
 
 ```http
 POST /jobs
@@ -92,7 +196,11 @@ Content-Type: application/json
 }
 ```
 
-`fromLocation` and `toLocation` must reference existing location codes from the `Locations` table.
+Validation rules currently implemented:
+- `fromLocation` is required
+- `toLocation` is required
+- source and destination must be different
+- both location codes must exist in `Locations`
 
 ## gRPC Worker
 
@@ -103,54 +211,20 @@ http://localhost:8081
 ```
 
 Proto file:
+- [job_execution.proto](/E:/source/WarehouseExecution/Worker/Protos/job_execution.proto)
 
-- [Worker/Protos/job_execution.proto](/workspace/D:\side-projects\source\WarehouseExecution\Worker\Protos\job_execution.proto)
-
-### Methods
-
+Methods:
 - `ExecuteJob`
 - `CancelJob`
 
-### Proto Overview
+The worker translates application exceptions into gRPC statuses:
+- invalid input -> `InvalidArgument`
+- missing entity -> `NotFound`
+- invalid lifecycle transition -> `FailedPrecondition`
 
-```proto
-service JobExecutionService {
-  rpc ExecuteJob (ExecuteJobRequest) returns (ExecuteJobResponse);
-  rpc CancelJob (CancelJobRequest) returns (CancelJobResponse);
-}
-```
+## Local Run
 
-`job_id` is transmitted as a `string` because Protocol Buffers do not have a native `Guid` type.
-
-## Database
-
-PostgreSQL is used as the system database.
-
-Reference data:
-- `Locations`
-  Stores warehouse location master data with `Id`, `Code`, `Name`, `CreatedAtUtc`, and `UpdatedAtUtc`
-
-Host ports:
-- API: `8080`
-- Worker: `8081`
-- PostgreSQL: `55432`
-
-Inside Docker Compose, application services connect to PostgreSQL using:
-
-```text
-Host=postgres;Port=5432;Database=warehouse_exec_db;Username=warehouse_exec_user;Password=warehouse_exec_pass
-```
-
-From the host machine, PostgreSQL is available on:
-
-```text
-localhost:55432
-```
-
-For demo simplicity, the `Api` host applies pending EF Core migrations on startup.
-In a production setup, schema migrations should be executed by a dedicated deployment step or migration job.
-
-## Run with Docker
+### Docker
 
 Start the full stack:
 
@@ -158,76 +232,76 @@ Start the full stack:
 docker compose up --build -d
 ```
 
-Stop and remove containers:
+Stop containers:
 
 ```powershell
 docker compose down
 ```
 
-Stop and remove containers including database volume:
+Stop containers and remove database volume:
 
 ```powershell
 docker compose down -v
 ```
 
-## Local Development
+### Local Development
 
-Build the solution:
+Build:
 
 ```powershell
 dotnet build WarehouseExecution.sln
 ```
 
-Run tests:
+Test:
 
 ```powershell
 dotnet test WarehouseExecution.sln
 ```
 
-Run API locally:
+Run API:
 
 ```powershell
 dotnet run --project Api
 ```
 
-Run Worker locally:
+Run Worker:
 
 ```powershell
 dotnet run --project Worker
 ```
 
-## Tests
+### Database Access
+
+Inside Docker Compose, services use:
+
+```text
+Host=postgres;Port=5432;Database=warehouse_exec_db;Username=warehouse_exec_user;Password=warehouse_exec_pass
+```
+
+From the host machine:
+
+```text
+localhost:55432
+```
+
+## Test Coverage
 
 The solution currently includes unit tests for:
-
 - `GET /locations`
 - `GET /jobs`
 - `GET /jobs/{id}`
 - `POST /jobs`
 - application-level validation for job creation
-- application-level cancellation of `Created` jobs
+- cancellation of `Created` jobs
+- API exception mapping for `400/404/409`
 
-Test project:
+## What Is Deliberately Not Built Yet
 
-- [Tests/Jobs/JobsControllerTests.cs](/workspace/D:\side-projects\source\WarehouseExecution\Tests\Jobs\JobsControllerTests.cs)
+This is still a narrow prototype. It does not yet include:
+- durable scheduling
+- multi-step execution planning
+- optimistic concurrency tokens
+- integration tests with full HTTP host + database
+- richer warehouse rules such as zone compatibility, capacity, or task batching
 
-## Important Notes
-
-- The execution scheduler inside `Worker` is in-memory.
-  Job and step state transitions are persisted in PostgreSQL, but the waiting timer itself is not durable across worker restarts.
-
-- This is an intentional prototype tradeoff for demo purposes.
-  A production-ready version would persist execution scheduling or use a queue/broker.
-
-- The project currently uses .NET 10 preview packages and SDK.
-
-## Current Status
-
-Implemented:
-- layered architecture
-- REST API for create/read
-- gRPC execution worker
-- PostgreSQL persistence
-- EF Core migrations
-- Docker Compose startup
-- unit tests for REST controller endpoints
+Those would be the next steps if the prototype were pushed toward a more production-like slice.
