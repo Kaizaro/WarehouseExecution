@@ -136,6 +136,9 @@ From the host machine, PostgreSQL is available on:
 localhost:55432
 ```
 
+For demo simplicity, the `Api` host applies pending EF Core migrations on startup.
+In a production setup, schema migrations should be executed by a dedicated deployment step or migration job.
+
 ## Run with Docker
 
 Start the full stack:

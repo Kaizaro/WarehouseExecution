@@ -24,7 +24,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-// Setup DbContext
+// Demo-only tradeoff: apply pending migrations on API startup.
+// In production this should be handled by a dedicated migration step/job.
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
